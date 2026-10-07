@@ -1,0 +1,6 @@
+{
+  "name": "prompt-pin",
+  "version": "0.1.0",
+  "description": "Pins the latest prompt above the input while Claude works; /prompts lists this session's prompts",
+  "types": "./types/index.d.ts"
+}
