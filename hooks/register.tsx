@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
 import type { PromptEntry } from '../types'
-import { clip, clock, label } from './format'
+import { clip, clock, label, oneLine } from './format'
 
 const PANE = 'prompt-pin'
 const CAP = 100
@@ -41,7 +41,7 @@ export const register: Register = on => {
         {list.slice(0, room).map((entry, i) => (
           <Text key={`p${i}`} bold={i === 0} dimColor={i !== 0}>
             {i === 0 ? '▶ ' : '  '}
-            {clock(entry.at)} {clip(label(entry.text), max)}
+            {clock(entry.at)} {clip(oneLine(label(entry.text)), max)}
           </Text>
         ))}
       </Box>

@@ -56,21 +56,38 @@ test('history is capped at 100', async ($, on) => {
   answerSubmit(on)
   mock.clock(on)
   for (let i = 0; i < 105; i += 1) await submit($, `p${i}`)
-  const ui = await $.ui.mount({ plugin: 'prompt-pin', surface: 'terminal', component: 'Pane', requestId: 'prompt-pin', props: { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 500 } }, viewport: { columns: 44, rows: 1000 } })
-  const rows = await ui.findAll({ type: 'Text', text: /^.*p\d+/ })
-  expect(rows).toHaveLength(100)
-  expect(rows[0]?.text).toContain('p104')
-  expect(rows[99]?.text).toContain('p5')
-  await ui.unmount()
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 500 } }, viewport: { columns: 44, rows: 1000 } })
+    const rows = await ui.findAll({ type: 'Text', text: /^.*p\d+/ })
+    expect(rows).toHaveLength(100)
+    expect(rows[0]?.text).toContain('p104')
+    expect(rows[99]?.text).toContain('p5')
+    await ui.unmount()
+  }
 })
 
 test('a whitespace-only prompt shows as an attachment', async ($, on) => {
   answerSubmit(on)
   mock.clock(on)
   await submit($, '   ')
-  const ui = await $.ui.mount({ plugin: 'prompt-pin', surface: 'terminal', component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
-  expect(await ui.find({ type: 'Text', text: '(attachment)' })).toBeDefined()
-  await ui.unmount()
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+    expect(await ui.find({ type: 'Text', text: '(attachment)' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('a multi-line prompt shows on one flowing line', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'l1\nl2\nl3\nl4\nl5\nl6')
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+    const row = await ui.find({ type: 'Text', text: /l1/ })
+    expect(row.text).not.toContain('\n')
+    expect(row.text).toContain('l1 l2 l3')
+    await ui.unmount()
+  }
 })
 
 test('the pane draws without a viewport', async ($, on) => {
