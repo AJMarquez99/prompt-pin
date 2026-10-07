@@ -47,4 +47,28 @@ export const register: Register = on => {
       </Box>
     )
   })
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const list = await read($, history)
+    const latest = list[list.length - 1]
+
+    if (!e.props.isWorking || e.props.hasSurvey || latest === undefined) {
+      return next(e)
+    }
+
+    const { Box, Button, Text } = $.ui.resolve(e)
+    // Leave room for the button; the surface also truncates at the edge.
+    const max = Math.max(10, e.props.bodyColumns - 14)
+
+    return (
+      <Box flexDirection="row">
+        <Box flexGrow={1}>
+          <Text wrap="truncate-end">
+            📌 {clip(oneLine(label(latest.text)), max)}
+          </Text>
+        </Box>
+        <Button key="history" label="History" onPress={() => $.ui.open({ id: PANE, title: 'Prompts' })} />
+      </Box>
+    )
+  })
 }

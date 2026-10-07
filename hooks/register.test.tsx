@@ -111,3 +111,107 @@ test('/prompts opens the pane', async ($, on) => {
   expect(out).toMatchObject({ text: 'Prompts pane opened.' })
   expect(opened).toMatchObject([{ id: 'prompt-pin', title: 'Prompts' }])
 })
+
+const BAND = (isWorking: boolean, hasSurvey = false) => ({
+  hasSurvey,
+  isWorking,
+  maxRows: 10,
+  bodyColumns: 80,
+  scroll: { offset: 0, bodyRows: 10 },
+  view: {},
+})
+
+const mountBand = ($: any, surface: 'terminal' | 'desktop', props: ReturnType<typeof BAND>) =>
+  $.ui.mount({ plugin: 'prompt-pin', surface, component: 'AbovePrompt', props, viewport: { columns: 80, rows: 24 } })
+
+// Text takes no key, so the pin is found by its marker.
+const findPin = (ui: any) => ui.find({ type: 'Text', text: /^📌/ })
+
+// What the engine draws when the band passes: an empty Box, so a hide test has a tree to read.
+const answerBand = (on: any) =>
+  on('ui.render', async ($: any, e: any) => {
+    const { Box } = $.ui.resolve(e)
+
+    return <Box />
+  })
+
+test('the band pins the latest prompt while working', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'older')
+  await submit($, 'build a pinned prompt band')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 build a pinned prompt band')
+    expect(await ui.find({ key: 'history' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('the band collapses a multi-line prompt to one row', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'line one\nline two\n\nline three')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 line one line two line three')
+    await ui.unmount()
+  }
+})
+
+test('a long prompt stays one row', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'y'.repeat(5000))
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    const pin = await findPin(ui)
+    expect(pin?.props.wrap).toBe('truncate-end')
+    expect(pin?.text.length).toBeLessThanOrEqual(80)
+    await ui.unmount()
+  }
+})
+
+for (const [name, props] of [
+  ['idle', BAND(false)],
+  ['a survey is up', BAND(true, true)],
+] as const) {
+  test(`the band stays out of the way when ${name}`, async ($, on) => {
+    answerBand(on)
+    answerSubmit(on)
+    mock.clock(on)
+    await submit($, 'hidden')
+    for (const surface of SURFACES) {
+      const ui = await mountBand($, surface, props)
+      expect(await findPin(ui)).toBeUndefined()
+      await ui.unmount()
+    }
+  })
+}
+
+test('the band passes when there is no prompt yet', async ($, on) => {
+  answerBand(on)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect(await findPin(ui)).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('the History button opens the pane', async ($, on) => {
+  const opened: string[] = []
+  on('ui.open', async (_$, e) => {
+    opened.push(e.id)
+    return { value: { isPlaced: true } }
+  })
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'x')
+  for (const surface of SURFACES) {
+    opened.length = 0
+    const ui = await mountBand($, surface, BAND(true))
+    await ui.press({ key: 'history' })
+    expect(opened).toEqual(['prompt-pin'])
+    await ui.unmount()
+  }
+})
