@@ -57,11 +57,33 @@ test('history is capped at 100', async ($, on) => {
   mock.clock(on)
   for (let i = 0; i < 105; i += 1) await submit($, `p${i}`)
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 500 } }, viewport: { columns: 44, rows: 1000 } })
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
     const rows = await ui.findAll({ type: 'Text', text: /^.*p\d+/ })
     expect(rows).toHaveLength(100)
     expect(rows[0]?.text).toContain('p104')
     expect(rows[99]?.text).toContain('p5')
+    await ui.unmount()
+  }
+})
+
+test('the pane lists every prompt in a normal terminal', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  for (let i = 0; i < 30; i += 1) await submit($, `q${i}`)
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+    expect(await ui.findAll({ type: 'Text', text: /q\d+/ })).toHaveLength(30)
+    await ui.unmount()
+  }
+})
+
+test('a dropped prompt is not recorded', async ($, on) => {
+  mock.clock(on)
+  on('prompt.submit', async () => ({ drop: 'refused' }))
+  await submit($, 'nope')
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+    expect(await ui.find({ type: 'Text', text: 'No prompts yet.' })).toBeDefined()
     await ui.unmount()
   }
 })
@@ -144,6 +166,30 @@ test('the band pins the latest prompt while working', async ($, on) => {
     const ui = await mountBand($, surface, BAND(true))
     expect((await findPin(ui))?.text).toBe('📌 build a pinned prompt band')
     expect(await ui.find({ key: 'history' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('the band ignores a prompt that is not the user\'s', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'real prompt')
+  await $.prompt.submit({ text: 'task done', origin: { kind: 'task-notification' } } as any)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 real prompt')
+    await ui.unmount()
+  }
+})
+
+test('the band records a composer prompt', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'first')
+  await $.prompt.submit({ text: 'typed by hand', origin: { kind: 'composer' } } as any)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 typed by hand')
     await ui.unmount()
   }
 })
