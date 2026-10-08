@@ -1,0 +1,6 @@
+{
+  "name": "prompt-pin",
+  "description": "Pin your latest prompt above the input while Claude works",
+  "owner": { "name": "Alejandro Marquez" },
+  "plugins": [{ "name": "prompt-pin", "source": "./" }]
+}
