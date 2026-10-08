@@ -84,8 +84,8 @@ test('a multi-line prompt shows on one flowing line', async ($, on) => {
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
     const row = await ui.find({ type: 'Text', text: /l1/ })
-    expect(row.text).not.toContain('\n')
-    expect(row.text).toContain('l1 l2 l3')
+    expect(row?.text).not.toContain('\n')
+    expect(row?.text).toContain('l1 l2 l3')
     await ui.unmount()
   }
 })
