@@ -57,7 +57,7 @@ export const register: Register = on => {
     const list = await read($, history)
     const latest = list[list.length - 1]
 
-    if (!e.props.isWorking || e.props.hasSurvey || latest === undefined) {
+    if (e.props.hasSurvey || latest === undefined) {
       return next(e)
     }
 
@@ -68,7 +68,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row">
         <Box flexGrow={1}>
-          <Text wrap="truncate-end">
+          <Text wrap="truncate-end" dimColor={!e.props.isWorking}>
             📌 {clip(oneLine(label(latest.text)), max)}
           </Text>
         </Box>

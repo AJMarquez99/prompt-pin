@@ -218,22 +218,42 @@ test('a long prompt stays one row', async ($, on) => {
   }
 })
 
-for (const [name, props] of [
-  ['idle', BAND(false)],
-  ['a survey is up', BAND(true, true)],
-] as const) {
-  test(`the band stays out of the way when ${name}`, async ($, on) => {
-    answerBand(on)
-    answerSubmit(on)
-    mock.clock(on)
-    await submit($, 'hidden')
-    for (const surface of SURFACES) {
-      const ui = await mountBand($, surface, props)
-      expect(await findPin(ui)).toBeUndefined()
-      await ui.unmount()
-    }
-  })
-}
+test('the band stays up, dimmed, when idle', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'still here')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(false))
+    const pin = await findPin(ui)
+    expect(pin?.text).toBe('📌 still here')
+    expect(pin?.props.dimColor).toBe(true)
+    expect(await ui.find({ key: 'history' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('the band is not dimmed while working', async ($, on) => {
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'in progress')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.props.dimColor).not.toBe(true)
+    await ui.unmount()
+  }
+})
+
+test('the band stays out of the way when a survey is up', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'hidden')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true, true))
+    expect(await findPin(ui)).toBeUndefined()
+    await ui.unmount()
+  }
+})
 
 test('the band passes when there is no prompt yet', async ($, on) => {
   answerBand(on)
