@@ -32,7 +32,11 @@ describe('label', () => {
 })
 
 describe('clock', () => {
-  test('formats as HH:MM', async () => {
-    expect(clock(Date.UTC(2026, 9, 7, 14, 2))).toMatch(/^\d\d:\d\d$/)
+  test('formats local time as HH:MM', async () => {
+    expect(clock(new Date(2026, 9, 7, 14, 2).getTime())).toBe('14:02')
+    expect(clock(new Date(2026, 9, 7, 9, 5).getTime())).toBe('09:05')
+  })
+  test('a missing time is a blank of the same width', async () => {
+    expect(clock(undefined)).toBe('     ')
   })
 })

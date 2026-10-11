@@ -11,7 +11,8 @@ const PANE_PROPS = {
 }
 const VIEWPORT = { columns: 44, rows: 24 }
 
-const submit = ($: any, text: string) => $.prompt.submit({ text, wait: false })
+// Submits as the person at the terminal; the test kit leaves origin to the test.
+const submit = ($: any, text: string, kind = 'composer') => $.prompt.submit({ text, origin: { kind } } as any)
 
 // The engine's own prompt.submit answer, which the test kit leaves to the test.
 const answerSubmit = (on: any) => on('prompt.submit', async (_$: any, e: any) => ({ text: e.text }))
@@ -181,6 +182,7 @@ const answerBand = (on: any) =>
   })
 
 test('the band pins the latest prompt while working', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'older')
@@ -194,10 +196,11 @@ test('the band pins the latest prompt while working', async ($, on) => {
 })
 
 test('the band ignores a prompt that is not the user\'s', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'real prompt')
-  await $.prompt.submit({ text: 'task done', origin: { kind: 'task-notification' } } as any)
+  await submit($, 'task done', 'task-notification')
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
     expect((await findPin(ui))?.text).toBe('📌 real prompt')
@@ -206,10 +209,11 @@ test('the band ignores a prompt that is not the user\'s', async ($, on) => {
 })
 
 test('the band records a composer prompt', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'first')
-  await $.prompt.submit({ text: 'typed by hand', origin: { kind: 'composer' } } as any)
+  await submit($, 'typed by hand')
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
     expect((await findPin(ui))?.text).toBe('📌 typed by hand')
@@ -218,6 +222,7 @@ test('the band records a composer prompt', async ($, on) => {
 })
 
 test('the band collapses a multi-line prompt to one row', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'line one\nline two\n\nline three')
@@ -229,6 +234,7 @@ test('the band collapses a multi-line prompt to one row', async ($, on) => {
 })
 
 test('a long prompt stays one row', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'y'.repeat(5000))
@@ -242,6 +248,7 @@ test('a long prompt stays one row', async ($, on) => {
 })
 
 test('the band stays up, dimmed, when idle', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'still here')
@@ -256,6 +263,7 @@ test('the band stays up, dimmed, when idle', async ($, on) => {
 })
 
 test('the band is not dimmed while working', async ($, on) => {
+  answerBand(on)
   answerSubmit(on)
   mock.clock(on)
   await submit($, 'in progress')
@@ -288,6 +296,7 @@ test('the band passes when there is no prompt yet', async ($, on) => {
 })
 
 test('the History button opens the pane', async ($, on) => {
+  answerBand(on)
   const opened: unknown[] = []
   on('ui.open', async (_$, e) => {
     opened.push(e)
@@ -304,3 +313,96 @@ test('the History button opens the pane', async ($, on) => {
     await ui.unmount()
   }
 })
+
+test('the band ignores a prompt another plugin submitted', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'mine')
+  await submit($, 'from a background mod', 'plugin')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 mine')
+    await ui.unmount()
+  }
+})
+
+test('the band records the prompt as rewritten by a later mod', async ($, on) => {
+  answerBand(on)
+  on('prompt.submit', async () => ({ text: 'rewritten' }))
+  mock.clock(on)
+  await submit($, 'as typed')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 rewritten')
+    await ui.unmount()
+  }
+})
+
+test('typing /prompts is not recorded', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'real work')
+  await submit($, '/prompts')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 real work')
+    await ui.unmount()
+  }
+})
+
+test('the band keeps what later mods draw there', async ($, on) => {
+  on('ui.render', async ($: any, e: any) => {
+    const { Box, Text } = $.ui.resolve(e)
+
+    return (
+      <Box>
+        <Text>branch: main</Text>
+      </Box>
+    )
+  })
+  answerSubmit(on)
+  mock.clock(on)
+  await submit($, 'pinned')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findPin(ui))?.text).toBe('📌 pinned')
+    expect(await ui.find({ type: 'Text', text: 'branch: main' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('/prompts is registered to run mid-turn', async ($, on) => {
+  const registered: unknown[] = []
+  on('command.register', async (_$: any, e: any) => {
+    registered.push(e)
+    return { value: undefined }
+  })
+  on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true } as any)
+  expect(registered).toMatchObject([{ name: 'prompts', immediate: true }])
+})
+
+for (const source of ['resume', 'fork'] as const) {
+  test(`history is rebuilt from the transcript after ${source}`, async ($, on) => {
+    on('session.messages', async () => ({
+      value: [
+        { role: 'user', text: 'first ask', toolUses: [] },
+        { role: 'assistant', text: 'ok', toolUses: [] },
+        { role: 'user', text: '', toolUses: [], toolResults: [{ tool_use_id: 't', text: 'out', isError: false }] },
+        { role: 'user', text: '<task-notification>done</task-notification>', toolUses: [] },
+        { role: 'user', text: '/prompts', toolUses: [] },
+        { role: 'user', text: 'second ask', toolUses: [] },
+      ],
+    }))
+    on('classic.SessionStart', () => ({}))
+    await $.classic.SessionStart({ source } as any)
+    for (const surface of SURFACES) {
+      const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+      const rows = await ui.findAll({ type: 'Text', text: /ask|done|prompts/ })
+      expect(rows.map(r => r.text.trim())).toEqual(['▶       second ask', 'first ask'])
+      await ui.unmount()
+    }
+  })
+}
