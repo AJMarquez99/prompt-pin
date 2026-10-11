@@ -7,6 +7,8 @@ import { clip, clock, label, oneLine } from './format'
 const PANE = 'prompt-pin'
 const CAP = 100
 const USER_ORIGINS: readonly string[] = ['composer', 'bridge', 'sdk', 'plugin']
+// The pane takes the keyboard so Esc closes it, like the engine's own views.
+const OPEN = { id: PANE, title: 'Prompts', focus: true, closeOnEscape: true } as const
 const history = atom({ plugin: 'prompt-pin', key: 'history' } as const, [] as PromptEntry[])
 
 export const register: Register = on => {
@@ -17,7 +19,13 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'prompts' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Prompts' })
+    if ((await $.ui.panes()).some(pane => pane.id === PANE)) {
+      await $.ui.close({ id: PANE })
+
+      return { text: 'Prompts pane closed.' }
+    }
+
+    await $.ui.open(OPEN)
 
     return { text: 'Prompts pane opened.' }
   })
@@ -72,7 +80,7 @@ export const register: Register = on => {
             📌 {clip(oneLine(label(latest.text)), max)}
           </Text>
         </Box>
-        <Button key="history" label="History" onPress={() => $.ui.open({ id: PANE, title: 'Prompts' })} />
+        <Button key="history" label="History" onPress={() => $.ui.open(OPEN)} />
       </Box>
     )
   })

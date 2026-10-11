@@ -123,7 +123,12 @@ test('the pane draws without a viewport', async ($, on) => {
   }
 })
 
+// The engine's record of open panes, which the test kit leaves to the test.
+const answerPanes = (on: any, ids: string[]) =>
+  on('ui.panes', async () => ({ value: ids.map(id => ({ id, title: id, isShown: true, isFocused: true, isPlaced: true })) }))
+
 test('/prompts opens the pane', async ($, on) => {
+  answerPanes(on, [])
   const opened: unknown[] = []
   on('ui.open', async (_$, e) => {
     opened.push(e)
@@ -131,7 +136,25 @@ test('/prompts opens the pane', async ($, on) => {
   })
   const out = await $.command.run({ command: 'prompts', args: '' } as any)
   expect(out).toMatchObject({ text: 'Prompts pane opened.' })
-  expect(opened).toMatchObject([{ id: 'prompt-pin', title: 'Prompts' }])
+  expect(opened).toMatchObject([{ id: 'prompt-pin', title: 'Prompts', focus: true, closeOnEscape: true }])
+})
+
+test('/prompts closes the pane when it is already open', async ($, on) => {
+  const open: string[] = []
+  const closed: unknown[] = []
+  answerPanes(on, open)
+  on('ui.open', async (_$, e) => {
+    open.push(e.id)
+    return { value: { isPlaced: true } }
+  })
+  on('ui.close', async (_$, e) => {
+    closed.push(e)
+    return { value: undefined }
+  })
+  await $.command.run({ command: 'prompts', args: '' } as any)
+  const out = await $.command.run({ command: 'prompts', args: '' } as any)
+  expect(out).toMatchObject({ text: 'Prompts pane closed.' })
+  expect(closed).toMatchObject([{ id: 'prompt-pin' }])
 })
 
 const BAND = (isWorking: boolean, hasSurvey = false) => ({
@@ -265,9 +288,9 @@ test('the band passes when there is no prompt yet', async ($, on) => {
 })
 
 test('the History button opens the pane', async ($, on) => {
-  const opened: string[] = []
+  const opened: unknown[] = []
   on('ui.open', async (_$, e) => {
-    opened.push(e.id)
+    opened.push(e)
     return { value: { isPlaced: true } }
   })
   answerSubmit(on)
@@ -277,7 +300,7 @@ test('the History button opens the pane', async ($, on) => {
     opened.length = 0
     const ui = await mountBand($, surface, BAND(true))
     await ui.press({ key: 'history' })
-    expect(opened).toEqual(['prompt-pin'])
+    expect(opened).toMatchObject([{ id: 'prompt-pin', focus: true, closeOnEscape: true }])
     await ui.unmount()
   }
 })
