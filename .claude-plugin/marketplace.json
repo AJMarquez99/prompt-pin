@@ -1,6 +1,6 @@
 {
   "name": "prompt-pin",
-  "description": "Pin your latest prompt above the input while Claude works",
+  "description": "Pin your latest prompt above the input and browse this session's prompts",
   "owner": { "name": "Alejandro Marquez" },
   "plugins": [{ "name": "prompt-pin", "source": "./" }]
 }

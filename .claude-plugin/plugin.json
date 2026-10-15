@@ -1,9 +1,13 @@
 {
   "name": "prompt-pin",
-  "version": "0.1.0",
-  "description": "Pins the latest prompt above the input while Claude works; /prompts lists this session's prompts",
+  "version": "0.2.0",
+  "description": "Pins your latest prompt above the input; /prompts lists this session's prompts",
   "author": {
     "name": "Alejandro Marquez"
   },
+  "homepage": "https://github.com/AJMarquez99/prompt-pin",
+  "repository": "https://github.com/AJMarquez99/prompt-pin",
+  "license": "MIT",
+  "keywords": ["prompts", "history", "mod"],
   "types": "./types/index.d.ts"
 }
