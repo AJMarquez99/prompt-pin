@@ -5,13 +5,16 @@ export const clip = (text: string, max: number): string =>
 
 export const label = (text: string): string => (text.trim() === '' ? '(attachment)' : text)
 
+const pad = (n: number): string => String(n).padStart(2, '0')
+
+// Local date and time to the second, so a session left for days still says when it last ran.
 // Rebuilt prompts have no time; the blank keeps the column aligned.
 export const clock = (at: number | undefined): string => {
-  if (at === undefined) return '     '
+  if (at === undefined) return ' '.repeat(19)
 
   const d = new Date(at)
 
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 export const duration = (ms: number): string => {

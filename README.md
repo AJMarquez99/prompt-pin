@@ -3,11 +3,13 @@
 A Claude Code mod that keeps your latest prompt in view.
 
 - **The band:** a 📌 line above the input shows the prompt you last sent, so you can see what
-  Claude is working on, with the time you sent it and how long it has run (`14:02 · 42s…`).
-  Once the turn ends it shows how long it took (`took 1m 23s`), or `stopped after` if you
-  interrupted it. It dims while Claude is idle, and its **History** button opens the pane.
-- **The pane:** `/prompts` opens a list of this session's prompts, newest first, with the time
-  each was sent and how long each took. Run it again, or press Esc, to close it. It works
+  Claude is working on, with the date and time you sent it and how long it has run
+  (`2026-10-07 14:02:05 · 42s…`). Once the turn ends it shows how long it took
+  (`took 1m 23s`), or `stopped after` if you interrupted it. The full date helps in a session
+  left open for days. The band dims while Claude is idle, and its **History** button opens
+  the pane.
+- **The pane:** `/prompts` opens a list of this session's prompts, newest first, with the date and
+  time each was sent and how long each took. Run it again, or press Esc, to close it. It works
   mid-turn too.
 
 Only your own prompts are recorded: ones typed at the terminal, sent over Remote Control, or from

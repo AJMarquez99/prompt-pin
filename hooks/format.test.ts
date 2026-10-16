@@ -32,12 +32,12 @@ describe('label', () => {
 })
 
 describe('clock', () => {
-  test('formats local time as HH:MM', async () => {
-    expect(clock(new Date(2026, 9, 7, 14, 2).getTime())).toBe('14:02')
-    expect(clock(new Date(2026, 9, 7, 9, 5).getTime())).toBe('09:05')
+  test('formats local time as YYYY-MM-DD HH:MM:SS', async () => {
+    expect(clock(new Date(2026, 9, 7, 14, 2, 5).getTime())).toBe('2026-10-07 14:02:05')
+    expect(clock(new Date(2026, 0, 3, 9, 5, 0).getTime())).toBe('2026-01-03 09:05:00')
   })
   test('a missing time is a blank of the same width', async () => {
-    expect(clock(undefined)).toBe('     ')
+    expect(clock(undefined)).toBe(' '.repeat(19))
   })
 })
 

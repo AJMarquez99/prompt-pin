@@ -401,7 +401,8 @@ for (const source of ['resume', 'fork'] as const) {
     for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
       const rows = await ui.findAll({ type: 'Text', text: /ask|done|prompts/ })
-      expect(rows.map(r => r.text.trim())).toEqual(['▶       second ask', 'first ask'])
+      // Rebuilt rows have no time: a blank as wide as one stands in for it.
+      expect(rows.map(r => r.text.trim())).toEqual([`▶ ${' '.repeat(19)} second ask`, 'first ask'])
       await ui.unmount()
     }
   })
@@ -413,8 +414,8 @@ const answerTurns = (on: any) => {
   on('turn.complete', async () => ({ text: '' }))
 }
 const T0 = new Date(2026, 9, 7, 14, 0).getTime()
-// Text takes no key, so the timing is found by its leading HH:MM.
-const findTiming = (ui: any) => ui.find({ type: 'Text', text: /^ \d\d:\d\d/ })
+// Text takes no key, so the timing is found by its leading date.
+const findTiming = (ui: any) => ui.find({ type: 'Text', text: /^ \d{4}-\d\d-\d\d / })
 const complete = ($: any, turnId: string, durationMs: number, reason = 'answer', agentId?: string) =>
   $.turn.complete({ turnId, durationMs, reason, isAborted: reason === 'aborted', answer: '', agentId } as any)
 
@@ -428,7 +429,7 @@ test('the band shows when the prompt was sent and counts up while it runs', asyn
   await clock.advance(42_000)
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 42s…')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00 · 42s…')
     expect((await findPin(ui))?.text).toBe('📌 build it')
     await ui.unmount()
   }
@@ -444,7 +445,7 @@ test('a turn that starts before its prompt is recorded is still timed', async ($
   await clock.advance(5_000)
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 5s…')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00 · 5s…')
     await ui.unmount()
   }
 })
@@ -459,7 +460,7 @@ test('the band shows how long the prompt took once its turn ends', async ($, on)
   await complete($, 't1', 83_000)
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(false))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · took 1m 23s')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00 · took 1m 23s')
     await ui.unmount()
   }
 })
@@ -474,7 +475,7 @@ test('an interrupted turn reads as stopped', async ($, on) => {
   await complete($, 't1', 12_000, 'aborted')
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(false))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · stopped after 12s')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00 · stopped after 12s')
     await ui.unmount()
   }
 })
@@ -491,7 +492,7 @@ test("a subagent's turn and another prompt's turn leave the timing alone", async
   await clock.advance(3_000)
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 3s…')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00 · 3s…')
     await ui.unmount()
   }
 })
@@ -505,7 +506,7 @@ test('the pane shows each prompt with how long it took', async ($, on) => {
   await complete($, 't1', 83_000)
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
-    expect((await ui.find({ type: 'Text', text: /first/ }))?.text).toContain('14:00 first · took 1m 23s')
+    expect((await ui.find({ type: 'Text', text: /first/ }))?.text).toContain('2026-10-07 14:00:00 first · took 1m 23s')
     await ui.unmount()
   }
 })
@@ -520,7 +521,7 @@ test("a queued prompt isn't timed by another turn that starts first", async ($, 
   await clock.advance(7_000)
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, BAND(true))
-    expect((await findTiming(ui))?.text.trim()).toBe('14:00')
+    expect((await findTiming(ui))?.text.trim()).toBe('2026-10-07 14:00:00')
     await ui.unmount()
   }
 })
