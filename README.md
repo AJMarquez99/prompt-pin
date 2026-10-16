@@ -20,6 +20,26 @@ claude plugin install prompt-pin@prompt-pin
 
 Start a new session to load it. Tested with Claude Code 2.1.300.
 
+Without an SSH key for GitHub, add the marketplace by its HTTPS URL instead:
+
+```sh
+claude plugin marketplace add https://github.com/AJMarquez99/prompt-pin.git
+```
+
+To update to the latest version:
+
+```sh
+claude plugin marketplace update prompt-pin
+claude plugin update prompt-pin@prompt-pin
+```
+
+To uninstall:
+
+```sh
+claude plugin uninstall prompt-pin@prompt-pin
+claude plugin marketplace remove prompt-pin
+```
+
 ## Behavior notes
 
 - **Shares the band.** Other mods that draw above the input still show, under the pin.
