@@ -3,9 +3,14 @@
 A Claude Code mod that keeps your latest prompt in view.
 
 - **The band:** a 📌 line above the input shows the prompt you last sent, so you can see what
-  Claude is working on. It dims while Claude is idle, and its **History** button opens the pane.
-- **The pane:** `/prompts` opens a list of this session's prompts, newest first, with the time
-  each was sent. Run it again, or press Esc, to close it. It works mid-turn too.
+  Claude is working on, with the date and time you sent it and how long it has run
+  (`2026-10-07 14:02:05 · 42s…`). Once the turn ends it shows how long it took
+  (`took 1m 23s`), or `stopped after` if you interrupted it. The full date helps in a session
+  left open for days. The band dims while Claude is idle, and its **History** button opens
+  the pane.
+- **The pane:** `/prompts` opens a list of this session's prompts, newest first, with the date and
+  time each was sent and how long each took. Run it again, or press Esc, to close it. It works
+  mid-turn too.
 
 Only your own prompts are recorded: ones typed at the terminal, sent over Remote Control, or from
 an SDK host. Task notifications, messages from other sessions and prompts other plugins submit
@@ -43,6 +48,9 @@ claude plugin marketplace remove prompt-pin
 ## Behavior notes
 
 - **Shares the band.** Other mods that draw above the input still show, under the pin.
+- **Timing is per turn.** A prompt you type while Claude is still working is timed from when its
+  own turn starts, not from when you sent it. A prompt Claude reads inside the running turn
+  instead of a turn of its own shows only the time you sent it.
 - **After `/resume` or `/branch`,** the history is rebuilt from the transcript. The transcript
   keeps no times, so those rows show none. `/clear` starts an empty history.
 - **Hidden while a survey is up**, so the survey has the room.
