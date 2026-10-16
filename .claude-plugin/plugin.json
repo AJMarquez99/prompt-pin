@@ -1,6 +1,6 @@
 {
   "name": "prompt-pin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pins your latest prompt above the input; /prompts lists this session's prompts",
   "author": {
     "name": "Alejandro Marquez"

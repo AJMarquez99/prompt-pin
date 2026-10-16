@@ -375,9 +375,9 @@ test('the band keeps what later mods draw there', async ($, on) => {
 
 test('/prompts is registered to run mid-turn', async ($, on) => {
   const registered: unknown[] = []
-  on('command.register', async (_$: any, e: any) => {
+  on('command.register', async (_$, e) => {
     registered.push(e)
-    return { value: undefined }
+    return { value: { command: e.name } }
   })
   on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }))
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true } as any)
@@ -406,3 +406,121 @@ for (const source of ['resume', 'fork'] as const) {
     }
   })
 }
+
+// The engine's own turn answers, which the test kit leaves to the test.
+const answerTurns = (on: any) => {
+  on('turn.start', async (_$: any, e: any) => ({ turnId: e.turnId }))
+  on('turn.complete', async () => ({ text: '' }))
+}
+const T0 = new Date(2026, 9, 7, 14, 0).getTime()
+// Text takes no key, so the timing is found by its leading HH:MM.
+const findTiming = (ui: any) => ui.find({ type: 'Text', text: /^ \d\d:\d\d/ })
+const complete = ($: any, turnId: string, durationMs: number, reason = 'answer', agentId?: string) =>
+  $.turn.complete({ turnId, durationMs, reason, isAborted: reason === 'aborted', answer: '', agentId } as any)
+
+test('the band shows when the prompt was sent and counts up while it runs', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  const clock = mock.clock(on, { now: T0 })
+  await submit($, 'build it')
+  await $.turn.start({ text: 'build it', turnId: 't1' })
+  await clock.advance(42_000)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 42s…')
+    expect((await findPin(ui))?.text).toBe('📌 build it')
+    await ui.unmount()
+  }
+})
+
+test('a turn that starts before its prompt is recorded is still timed', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  const clock = mock.clock(on, { now: T0 })
+  await $.turn.start({ text: 'idle start', turnId: 't1' })
+  await submit($, 'idle start')
+  await clock.advance(5_000)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 5s…')
+    await ui.unmount()
+  }
+})
+
+test('the band shows how long the prompt took once its turn ends', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  mock.clock(on, { now: T0 })
+  await submit($, 'done soon')
+  await $.turn.start({ text: 'done soon', turnId: 't1' })
+  await complete($, 't1', 83_000)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(false))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · took 1m 23s')
+    await ui.unmount()
+  }
+})
+
+test('an interrupted turn reads as stopped', async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  mock.clock(on, { now: T0 })
+  await submit($, 'never mind')
+  await $.turn.start({ text: 'never mind', turnId: 't1' })
+  await complete($, 't1', 12_000, 'aborted')
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(false))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · stopped after 12s')
+    await ui.unmount()
+  }
+})
+
+test("a subagent's turn and another prompt's turn leave the timing alone", async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  const clock = mock.clock(on, { now: T0 })
+  await submit($, 'mine')
+  await $.turn.start({ text: 'mine', turnId: 't1' })
+  await complete($, 't1', 1_000, 'answer', 'agent-1')
+  await $.turn.start({ text: 'a notification', turnId: 't2' })
+  await clock.advance(3_000)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00 · 3s…')
+    await ui.unmount()
+  }
+})
+
+test('the pane shows each prompt with how long it took', async ($, on) => {
+  answerSubmit(on)
+  answerTurns(on)
+  mock.clock(on, { now: T0 })
+  await submit($, 'first')
+  await $.turn.start({ text: 'first', turnId: 't1' })
+  await complete($, 't1', 83_000)
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'prompt-pin', surface, component: 'Pane', requestId: 'prompt-pin', props: PANE_PROPS, viewport: VIEWPORT })
+    expect((await ui.find({ type: 'Text', text: /first/ }))?.text).toContain('14:00 first · took 1m 23s')
+    await ui.unmount()
+  }
+})
+
+test("a queued prompt isn't timed by another turn that starts first", async ($, on) => {
+  answerBand(on)
+  answerSubmit(on)
+  answerTurns(on)
+  const clock = mock.clock(on, { now: T0 })
+  await submit($, 'queued behind')
+  await $.turn.start({ text: 'a notification', turnId: 't1' })
+  await clock.advance(7_000)
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface, BAND(true))
+    expect((await findTiming(ui))?.text.trim()).toBe('14:00')
+    await ui.unmount()
+  }
+})
